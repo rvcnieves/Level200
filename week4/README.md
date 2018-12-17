@@ -9,5 +9,5 @@ https://github.com/rvcnieves/Level200/tree/master/week4
 
 ### README.md <- This file.
 
-**  If you would like to run the code, make sure to save "projectCN.R" into the "r_code" folder which is located under the project folder "UCI HAR Dataset".
+**  If you would like to run the code, make sure to save "run_analysis.R" into the "r_code" folder which is located under the project folder "UCI HAR Dataset".
 
