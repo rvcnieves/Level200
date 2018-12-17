@@ -116,3 +116,4 @@ X_y_sub_TrainTest.melted
 #### calculate the means.
 X_y_sub_TrainTest.mean <- dcast(X_y_sub_TrainTest.melted,subject_id+activity_name ~ variable,mean)
 head(X_y_sub_TrainTest.mean)
+write.table(X_y_sub_TrainTest.mean,"5_dataset.txt",row.name=FALSE)
