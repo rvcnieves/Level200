@@ -31,8 +31,8 @@ Y_wActivity_TrainTest <- combined (train/test) Y with activity name
 
 X_y_TrainTest <- X and y combined
 
-## sub_train
-## sub_test
+. sub_train
+. sub_test
 
 These are the subjects train/test sets.
 
