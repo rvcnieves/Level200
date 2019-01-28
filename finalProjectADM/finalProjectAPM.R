@@ -2,6 +2,7 @@
 
 library(dplyr)
 library(caret)
+set.seed(975)
 
 ###### Load Data
 data <- read.csv("HGUAnalysisPRJ/HDdata.csv")
@@ -16,10 +17,14 @@ data_noNAs <- data[!is.na(data$age),]
 head(data_noNAs)
 summary(data_noNAs)
 
-### setting categorical columns as factors
+### setting categorical columns as factors and explored applying log10 to continuous columns.
 categorical_columns <- c('sex', 'cp', 'restecg', 'fbs', 'exang', 'num')
+# continuous_columns <- c('age','trestbps','chol','thalach')
 data_noNAs[,categorical_columns] <- lapply(data_noNAs[,categorical_columns],factor)
+# data_noNAs[,continuous_columns] <- lapply(data_noNAs[,continuous_columns],log10)
 str(data_noNAs)
+summary(data_noNAs)
+
 
 ######  Choose an appropriate model type
 ###  Considering the response is categorical, I will use the logistic regression model type.
@@ -39,7 +44,7 @@ summary(test_data)
 
 ###### In your data are there:
 ######  a. NAs?
-###           Yes in the age feature, I will remove those observations with missing age since they are only 10 out of 303 observations.  (done before splitting into training/test sets)
+###           Yes in the age feature, I will remove those observations with missing age since they are only 10 out of 303 observations.  (completed before splitting into training/test sets)
 sum(is.na(data$age))
 
 ######  b. categorical values?
@@ -82,7 +87,7 @@ head(test_predicted_num)
 ###### c. Calculate the accuracy, PPV, NPV, Sensitivity and Specificity.
 confusionMatrix(test_predicted_num,reference = factor(test_data$num == 1))
 
-### When comparing the training/test confusion matrix, the test performance metrics are close to the training performance metrics.  For example, accuracy-train : .8107 and accuracy-test: .7931.  Also, the PPV-train : 0.8087 and the PPV-test : 0.800.
+### When comparing the training/test confusion matrix, the test performance metrics are close to the training performance metrics.  For example, accuracy-train : .8204 and accuracy-test: .7931.  Also, the PPV-train : 0.8136 and the PPV-test : 0.7843.
 
 ### If we remove some of the features and create a new model, we can get minimal improvement on performance metrics while keeping the model simpler.
 
