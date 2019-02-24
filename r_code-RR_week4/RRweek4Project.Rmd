@@ -1,0 +1,210 @@
+---
+title: "Analysis of Health and Economic Impact of Severe Weather Events"
+author: "CN"
+date: "2/22/2019"
+output:
+  html_document:
+    keep_md: yes
+---
+
+#Synopsis
+
+On this project, we want to use data in order to address the following:
+
+1. Across the United States, which types of events (as indicated in the \color{red}{\verb|EVTYPE|}EVTYPE variable) are most harmful with respect to population health?
+  
+  * Storms and heat waves are the most harmful to population health.
+
+2. Across the United States, which types of events have the greatest economic consequences?
+
+  * Storms that generate high winds and flooding are the main cause of most damage cost. Flooding is the main cause for the most property and crop damage.
+  
+In order to complete the analysis, we used Injuries and Fatalities variables as metrics that help describe impact to population health.  At the same time, we used Property and Crop Damage variables as the two metrics that help describe economic impact.  The data processing is divided in two sections in order address each question.
+
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE,cache=TRUE)
+```
+###Data Processing | Population health
+
+Before understanding the data, let's download the data file and load it into a variable.
+
+```{r loadLibraries,results='hold'}
+library(tidyverse)
+library(ggplot2)
+```
+```{r loadData,results='hold'}
+
+temp <- tempfile()
+download.file("https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2",temp)
+data <- read.csv(temp, header=T, sep=",",row.names=NULL)
+```
+
+Let's explore the features included in the data set:
+```{r featNames}
+### feature names
+colnames(data)
+
+```
+
+After reviewing the documentation, I decided to use injuries and fatalities as metrics that will help identify most harmful events to population health.  Also, I will group these two by event type and aggregate them with the mean value of these variables. This transformation will help us understand how each event impacts each variable in average considering they occur in different locations, time and date, for example. 
+
+```{r exploringData}
+
+## events
+#unique(data$EVTYPE)
+
+head(table(data$EVTYPE)[order(table(data$EVTYPE),decreasing = TRUE)],20)
+
+###
+summary(data$FATALITIES)
+summary(data$INJURIES)
+
+data4analysis <- data %>%
+  select(EVTYPE,FATALITIES,INJURIES) %>%
+  group_by(EVTYPE) %>%
+  summarise(meanFatal = mean(FATALITIES), meanInj = mean(INJURIES))
+
+summary(data4analysis)
+
+
+
+
+```
+
+Let's look at different histograms of the **INJURIES** feature in order to understand better how the data varies:
+```{r histogramsInjuries}
+for (eachThreshold in c(0)){
+  
+  # print(qplot(data$INJURIES[data$INJURIES>eachThreshold],geom="histogram",bins = 20) +
+  #   xlab("Number of Injuries") + ylab("Frequency") + 
+  #   ggtitle(paste("Histogram of Number of Injuries Greater Than",eachThreshold)))
+  
+  print(qplot(data4analysis$meanInj[data4analysis$meanInj>eachThreshold],geom="histogram",bins = 20) +
+    xlab("Number of Mean Injuries") + ylab("Frequency") + 
+    ggtitle(paste("Histogram of Number of Mean Injuries Greater Than",eachThreshold)))
+  
+}
+
+```
+
+It helps looking at the number of injuries that are greater than 0.  This will help us focus on the highest number of mean injuries while we identify events that are most harmful to population health.
+
+Now, let's do the same for number of **FATALITIES**.
+```{r histogramsFatalities}
+for (eachThreshold in c(0)){
+  
+  print(qplot(data4analysis$meanFatal[data4analysis$meanInj>eachThreshold],geom="histogram",bins = 20) +
+    xlab("Number of Mean Fatalities") + ylab("Frequency") + 
+    ggtitle(paste("Histogram of Number of Mean Fatalities Greater Than",eachThreshold)))
+  
+}
+
+```
+
+With Fatalities, I propose considering fatalities greater than 0 as a metric that will help us identify those events that affect the population health.
+
+Moving forward, lets look at the correlation between these two features.
+```{r correlation}
+library(reshape2)
+ggplot(data4analysis,aes(x=meanFatal,y=meanInj)) +
+  geom_point() + xlab("Number of Mean Fatalities") + ylab("Number of Mean Injuries")  +
+  ggtitle(paste("Number of Mean Fatalies vs Mean Injuries   |   Correlation:",round(cor(data4analysis$meanFatal,data4analysis$meanInj),4)))
+
+```
+
+There is low positive correlation between Fatalities and Injuries.  
+
+Now, let's identify which events are the most harmful by looking at the events with most fatalities and most injuries using the thresholds we defined earlier.
+
+* Identify those rows that have mean injuries/fatalities greater than 0 and filtered them.
+```{r filterData}
+highMeanInjFat <- data4analysis %>%
+  mutate(highInjuryFatality = (meanInj>0&meanFatal>0)) %>%
+  filter(highInjuryFatality == TRUE)
+```
+
+* Get Top 10 events with the highest mean fatalities that also had high number of mean injuries.  I'm counting the number of times a top fatality/injury is seen for each one in order to identify which events was in the top for both.  Then, will sort by the mean of Fatalities to get the final top 10.
+```{r getTop10}
+## init count 0
+highMeanInjFat[,"top10"] <-0
+## display top 7 for each variable
+head(highMeanInjFat[order(highMeanInjFat$meanFatal,decreasing = TRUE),],7)
+head(highMeanInjFat[order(highMeanInjFat$meanInj,decreasing = TRUE),],7)
+## For each variable add 1 in the top10 column if they were in the top 50
+highMeanInjFat[order(highMeanInjFat$meanFatal,decreasing = TRUE)[1:50],"top10"] <-highMeanInjFat[order(highMeanInjFat$meanFatal,decreasing = TRUE)[1:50],"top10"]+1
+highMeanInjFat[order(highMeanInjFat$meanInj,decreasing = TRUE)[1:50],"top10"] <-highMeanInjFat[order(highMeanInjFat$meanInj,decreasing = TRUE)[1:50],"top10"]+1
+
+## filter by top10 column to get only those rows that were in both top 50 lists.
+top10 <- highMeanInjFat %>%
+  filter(top10 ==2)
+
+## Get the top 10
+top10Health <- head(top10[order(top10$meanFatal,decreasing = TRUE),],10)
+print(top10Health)
+```
+
+## Data Processing | Economic impact
+
+Using property damage and crop damage variables, will help us identify event types that have the greatest economic consequences.  We are transforming the damage account for each variable following the exponential provided in the **PROPDMGEXP/CROPDMGEXP** (exponential/units) variable.
+
+```{r economy}
+
+##### economy
+### adjusting Property and Crop damage dollar amounts with their exponential units and then adding them together.
+econData <- data %>%
+  filter(PROPDMG>0 & CROPDMG>0 ) %>%
+  mutate(adjPropDmg=
+           if_else(PROPDMGEXP=="B",PROPDMG*1e8,
+              if_else(PROPDMGEXP=="M"|PROPDMGEXP=="m",PROPDMG*1e6,
+                if_else(PROPDMGEXP=="K"|PROPDMGEXP=="3",PROPDMG*1e3,
+                      if_else(PROPDMGEXP=="5",PROPDMG*1e5, PROPDMG
+                  )
+              )
+            )
+          ),adjCropDmg= if_else(CROPDMGEXP=="B",CROPDMG*1e8,
+              if_else(CROPDMGEXP=="M"|CROPDMGEXP=="m",CROPDMG*1e6,
+                if_else(CROPDMGEXP=="K"|CROPDMGEXP=="k",CROPDMG*1e3,
+                      if_else(CROPDMGEXP=="5",CROPDMG*1e5, CROPDMG
+                  )
+              )
+            )
+          )
+        ,allDamage=adjCropDmg+adjPropDmg
+        )
+
+head(econData[,c("CROPDMG","adjCropDmg","CROPDMGEXP","PROPDMG","adjPropDmg","PROPDMGEXP","allDamage")])
+# unique(econData$PROPDMGEXP)
+# unique(econData$CROPDMGEXP)
+```
+
+After combining the property and crop damage in one column we can find the top events that create the most economic impact.
+
+```{r topAllDamage}
+
+top10econ <- head(econData[order(econData$allDamage,decreasing = TRUE),c("EVTYPE","allDamage")],10)
+print(top10econ)
+```
+
+
+#Results
+
+### First Question:
+
+* We can identify that these 10 events are the ones that are the most harmful to population health:
+
+```{r top10Health}
+print(top10Health)
+```
+
+* Heat wave and storms are the most significant of all 10 events.
+
+### Second Question:
+
+* We find that these 10 events are the ones that have the greatest economic consequences:
+
+```{r topecon}
+print(top10econ)
+```
+
+* Storms that generate high winds and flooding are the main cause of most damage cost.  Flooding is the main cause for the most property and crop damage. 
